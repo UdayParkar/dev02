@@ -42,3 +42,4 @@ security/
 docker-compose.yml
 docker-compose.override.yml
 *.md
+!docker/nginx.conf
