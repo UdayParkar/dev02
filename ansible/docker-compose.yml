@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  frontend:
+    image: 032425924654.dkr.ecr.ap-south-1.amazonaws.com/aurabeauty-frontend:latest
+    ports:
+      - "3000:80"
+    restart: always
+
+  backend:
+    image: 032425924654.dkr.ecr.ap-south-1.amazonaws.com/aurabeauty-backend:latest
+    ports:
+      - "5000:5000"
+    restart: always
