@@ -1,0 +1,44 @@
+# Node modules & build outputs
+**/node_modules
+**/build
+**/dist
+**/.next
+**/.nuxt
+
+# Logs & temp
+**/*.log
+logs
+tmp
+*.pid
+*.seed
+
+# Environment & secrets
+**/.env
+**/.env.*
+secrets/
+security/keys/
+security/certs/
+
+# Git & local tools
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Docker & infra config (handled externally)
+docker/
+terraform/
+scripts/
+monitoring/
+security/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
+
+# Compose & config files not needed for builds
+docker-compose.yml
+docker-compose.override.yml
+*.md

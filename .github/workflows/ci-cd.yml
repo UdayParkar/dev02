@@ -1,0 +1,79 @@
+name: CI-CD Pipeline - AuraBeauty
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+env:
+  AZURE_ACR_NAME: acraurabeauty
+  RESOURCE_GROUP: rg-aurabeauty
+  VM_USER: azureuser
+  VM_HOST: ${{ secrets.VM_HOST }}
+  VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+
+jobs:
+  build-scan-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Build frontend Docker image
+      - name: Build Frontend Docker Image
+        run: |
+          docker build -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest -f docker/frontend.Dockerfile ./app/frontend
+
+      # Build backend Docker image
+      - name: Build Backend Docker Image
+        run: |
+          docker build -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest -f docker/backend.Dockerfile ./app/backend
+
+      # Trivy Security Scan
+      - name: Trivy Scan Frontend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
+          format: 'table'
+          exit-code: '0'
+
+      - name: Trivy Scan Backend
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
+          format: 'table'
+          exit-code: '0'
+
+      # Azure Login
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # Login to ACR
+      - name: ACR Login
+        run: az acr login --name ${{ env.AZURE_ACR_NAME }}
+
+      # Push images to ACR
+      - name: Push Frontend
+        run: docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
+
+      - name: Push Backend
+        run: docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
+
+      # Deploy to Azure VM via SSH
+      - name: Deploy to Azure VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.VM_HOST }}
+          username: ${{ env.VM_USER }}
+          key: ${{ env.VM_SSH_KEY }}
+          script: |
+            sudo docker login ${{ env.AZURE_ACR_NAME }}.azurecr.io -u $(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query "username" -o tsv) -p $(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query "passwords[0].value" -o tsv)
+            sudo docker pull ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
+            sudo docker pull ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
+            sudo docker stop frontend || true && sudo docker rm frontend || true
+            sudo docker stop backend || true && sudo docker rm backend || true
+            sudo docker run -d -p 3000:3000 --name frontend ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
+            sudo docker run -d -p 5000:5000 --name backend ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
