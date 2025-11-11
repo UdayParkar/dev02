@@ -1,9 +1,17 @@
+# Stage 1 — Build
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY app/backend/package*.json ./
+RUN npm ci --only=production
+COPY app/backend/ .
+
+# Stage 2 — Runtime
 FROM node:18-alpine
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY ../backend /app
-ENV MONGODB_URI="mongodb://localhost:27017/aura"
+COPY --from=build /app /app
+
+# Use service name for DB host when using Docker Compose
+ENV MONGODB_URI=mongodb://mongo:27017/aura
 
 EXPOSE 3000
 CMD ["npm", "start"]
