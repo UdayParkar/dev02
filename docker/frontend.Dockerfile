@@ -10,8 +10,8 @@ RUN npm install
 COPY app/frontend/ ./
 
 # Inject environment variable for API base URL
-ARG REACT_APP_API_URL
-ENV REACT_APP_API_URL=$REACT_APP_API_URL
+# ARG REACT_APP_API_URL
+# ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Build React app
 RUN npm run build

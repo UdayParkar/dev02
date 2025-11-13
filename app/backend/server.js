@@ -9,12 +9,8 @@ dotenv.config();
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: "http://localhost:3000",
-  credentials: true
-};
+app.use(cors());
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // Root route for health check
@@ -24,7 +20,7 @@ app.get('/', (req, res) => {
 
 // MongoDB connection with retry
 const connectWithRetry = () => {
-  mongoose.connect(process.env.MONGODB_URI, {
+  mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
   })
