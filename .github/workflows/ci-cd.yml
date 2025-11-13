@@ -60,7 +60,8 @@ jobs:
       - name: Build Backend Docker image
         run: |
           docker build -t ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:$TAG \
-            $BACKEND_DIR
+          -f docker/backend.Dockerfile .
+
 
     ###############################################
     # 6. BUILD FRONTEND IMAGE
@@ -68,7 +69,8 @@ jobs:
       - name: Build Frontend Docker image
         run: |
           docker build -t ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:$TAG \
-            $FRONTEND_DIR
+          -f docker/frontend.Dockerfile .
+
 
     ###############################################
     # 7. TRIVY SCAN (DOCKER VERSION) - BACKEND
