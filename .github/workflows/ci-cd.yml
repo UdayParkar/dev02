@@ -1,79 +1,144 @@
-name: CI-CD Pipeline - AuraBeauty
+name: CI/CD - AuraBeauty
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
+    branches:
+      - main
 
 env:
-  AZURE_ACR_NAME: acraurabeauty
-  RESOURCE_GROUP: rg-aurabeauty
-  VM_USER: azureuser
-  VM_HOST: ${{ secrets.VM_HOST }}
-  VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+  AWS_REGION: ap-south-1
+  FRONTEND_DIR: app/frontend
+  BACKEND_DIR: app/backend
+  FRONTEND_REPO: aurabeauty-frontend
+  BACKEND_REPO: aurabeauty-backend
+  TAG: latest
 
 jobs:
   build-scan-push-deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write     # required for OIDC
+      contents: read
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    ###############################################
+    # 1. CHECKOUT
+    ###############################################
+      - name: Checkout source code
+        uses: actions/checkout@v4
 
-      # Build frontend Docker image
-      - name: Build Frontend Docker Image
-        run: |
-          docker build -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest -f docker/frontend.Dockerfile ./app/frontend
-
-      # Build backend Docker image
-      - name: Build Backend Docker Image
-        run: |
-          docker build -t ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest -f docker/backend.Dockerfile ./app/backend
-
-      # Trivy Security Scan
-      - name: Trivy Scan Frontend
-        uses: aquasecurity/trivy-action@master
+    ###############################################
+    # 2. CONFIGURE AWS (OIDC ONLY)
+    ###############################################
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          image-ref: ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
-          format: 'table'
-          exit-code: '0'
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-session-name: aurabeauty-session
+          aws-region: ${{ env.AWS_REGION }}
 
+    ###############################################
+    # 3. GET AWS ACCOUNT ID
+    ###############################################
+      - name: Get AWS Account ID
+        id: aws
+        run: echo "ACCOUNT=$(aws sts get-caller-identity --query Account --output text)" >> $GITHUB_OUTPUT
+
+    ###############################################
+    # 4. LOGIN TO ECR
+    ###############################################
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+            | docker login --username AWS --password-stdin \
+              ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com
+
+    ###############################################
+    # 5. BUILD BACKEND IMAGE
+    ###############################################
+      - name: Build Backend Docker image
+        run: |
+          docker build -t ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:$TAG \
+            $BACKEND_DIR
+
+    ###############################################
+    # 6. BUILD FRONTEND IMAGE
+    ###############################################
+      - name: Build Frontend Docker image
+        run: |
+          docker build -t ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:$TAG \
+            $FRONTEND_DIR
+
+    ###############################################
+    # 7. TRIVY SCAN (DOCKER VERSION) - BACKEND
+    ###############################################
       - name: Trivy Scan Backend
-        uses: aquasecurity/trivy-action@master
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity CRITICAL,HIGH \
+            ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:$TAG
+
+    ###############################################
+    # 8. TRIVY SCAN (DOCKER VERSION) - FRONTEND
+    ###############################################
+      - name: Trivy Scan Frontend
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity CRITICAL,HIGH \
+            ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:$TAG
+
+    ###############################################
+    # 9. PUSH IMAGES TO ECR
+    ###############################################
+      - name: Push Images to ECR
+        run: |
+          docker push ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$FRONTEND_REPO:$TAG
+          docker push ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com/$BACKEND_REPO:$TAG
+
+    ###############################################
+    # 10. GET EC2 PUBLIC IP DYNAMICALLY
+    ###############################################
+      - name: Fetch EC2 Public IP
+        id: ec2
+        run: |
+          PUBLIC_IP=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=aurabeauty-app" \
+                     "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" \
+            --output text)
+          echo "EC2_IP=$PUBLIC_IP" >> $GITHUB_OUTPUT
+
+    ###############################################
+    # 11. COPY DOCKER-COMPOSE FILE INTO EC2 (SCP)
+    ###############################################
+      - name: Copy docker-compose to EC2
+        uses: appleboy/scp-action@v0.1.7
         with:
-          image-ref: ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
-          format: 'table'
-          exit-code: '0'
+          host: ${{ steps.ec2.outputs.EC2_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "./docker-compose.yml"
+          target: "/home/ubuntu/"
 
-      # Azure Login
-      - name: Azure Login
-        uses: azure/login@v1
+    ###############################################
+    # 12. DEPLOY ON EC2 (SSH + DOCKER COMPOSE PULL/UP)
+    ###############################################
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v0.1.10
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      # Login to ACR
-      - name: ACR Login
-        run: az acr login --name ${{ env.AZURE_ACR_NAME }}
-
-      # Push images to ACR
-      - name: Push Frontend
-        run: docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
-
-      - name: Push Backend
-        run: docker push ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
-
-      # Deploy to Azure VM via SSH
-      - name: Deploy to Azure VM
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ env.VM_HOST }}
-          username: ${{ env.VM_USER }}
-          key: ${{ env.VM_SSH_KEY }}
+          host: ${{ steps.ec2.outputs.EC2_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo docker login ${{ env.AZURE_ACR_NAME }}.azurecr.io -u $(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query "username" -o tsv) -p $(az acr credential show -n ${{ env.AZURE_ACR_NAME }} --query "passwords[0].value" -o tsv)
-            sudo docker pull ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
-            sudo docker pull ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
-            sudo docker stop frontend || true && sudo docker rm frontend || true
-            sudo docker stop backend || true && sudo docker rm backend || true
-            sudo docker run -d -p 3000:3000 --name frontend ${{ env.AZURE_ACR_NAME }}.azurecr.io/frontend:latest
-            sudo docker run -d -p 5000:5000 --name backend ${{ env.AZURE_ACR_NAME }}.azurecr.io/backend:latest
+            cd /home/ubuntu
+            aws ecr get-login-password --region $AWS_REGION \
+              | docker login --username AWS --password-stdin \
+                ${{ steps.aws.outputs.ACCOUNT }}.dkr.ecr.$AWS_REGION.amazonaws.com
+
+            docker compose pull
+            docker compose up -d

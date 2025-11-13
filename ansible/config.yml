@@ -1,5 +1,5 @@
 ---
-- name: Setup Docker, AWS CLI, and deploy app using Docker Compose
+- name: Configure EC2 with Docker and AWS CLI
   hosts: all
   become: true
 
@@ -8,7 +8,7 @@
       apt:
         update_cache: yes
 
-    - name: Install required dependencies
+    - name: Install required packages
       apt:
         name:
           - apt-transport-https
@@ -16,21 +16,22 @@
           - curl
           - software-properties-common
           - gpg
+          - unzip
         state: present
         update_cache: yes
 
-    - name: Add Docker official GPG key
+    - name: Add Docker GPG key
       ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
-        dest: /usr/share/keyrings/docker-archive-keyring.gpg
+        dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
 
     - name: Add Docker APT repository
       apt_repository:
-        repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
 
-    - name: Install Docker and Docker Compose plugin
+    - name: Install Docker and docker compose plugin
       apt:
         name:
           - docker-ce
@@ -52,30 +53,11 @@
         enabled: yes
         state: started
 
-    - name: Install AWS CLI v2 manually
+    - name: Install AWS CLI v2 if missing
       shell: |
+        cd /tmp
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        apt install -y unzip
         unzip -o awscliv2.zip
         ./aws/install --update
       args:
-        chdir: /tmp
         creates: /usr/local/bin/aws
-
-    - name: Authenticate Docker to AWS ECR
-      shell: |
-        aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 032425924654.dkr.ecr.ap-south-1.amazonaws.com
-
-    - name: Copy docker-compose.yml file to server
-      copy:
-        src: ./docker-compose.yml
-        dest: /home/ubuntu/docker-compose.yml
-        owner: ubuntu
-        mode: '0644'
-
-    - name: Deploy containers using Docker Compose
-      shell: |
-        cd /home/ubuntu
-        docker compose down
-        docker compose pull
-        docker compose up -d

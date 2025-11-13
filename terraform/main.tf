@@ -44,7 +44,6 @@ resource "aws_security_group" "app_sg" {
   description = "Allow SSH, frontend, backend"
   vpc_id      = aws_vpc.main.id
 
-  # SSH
   ingress {
     description = "SSH"
     from_port   = 22
@@ -53,7 +52,6 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Frontend (Nginx)
   ingress {
     description = "Frontend HTTP"
     from_port   = 80
@@ -62,7 +60,6 @@ resource "aws_security_group" "app_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Backend API
   ingress {
     description = "Backend HTTP"
     from_port   = 5000
@@ -101,7 +98,6 @@ data "aws_iam_policy_document" "ec2_trust" {
   }
 }
 
-# Allow ECR pulls (read-only is enough)
 resource "aws_iam_role_policy_attachment" "ecr_readonly" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
@@ -113,7 +109,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 }
 
 ########################
-# EC2 Instance (Ubuntu)
+# EC2 Instance
 ########################
 resource "aws_instance" "app" {
   ami                         = var.ami_id
@@ -131,13 +127,59 @@ resource "aws_instance" "app" {
 # ECR Repositories
 ########################
 resource "aws_ecr_repository" "frontend" {
-  name = "aurabeauty-frontend"
+  name                 = "aurabeauty-frontend"
   image_tag_mutability = "MUTABLE"
   tags = { Name = "aurabeauty-frontend" }
 }
 
 resource "aws_ecr_repository" "backend" {
-  name = "aurabeauty-backend"
+  name                 = "aurabeauty-backend"
   image_tag_mutability = "MUTABLE"
   tags = { Name = "aurabeauty-backend" }
+}
+
+##########################################
+# GitHub Actions OIDC Provider
+##########################################
+resource "aws_iam_openid_connect_provider" "github" {
+  url = "https://token.actions.githubusercontent.com"
+
+  client_id_list = [
+    "sts.amazonaws.com"
+  ]
+
+  thumbprint_list = [
+    "6938fd4d98bab03faadb97b34396831e3780aea1"
+  ]
+}
+
+##########################################
+# GitHub Actions IAM Role for CI/CD
+##########################################
+resource "aws_iam_role" "github_actions_role" {
+  name = "aurabeauty-github-actions-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Federated = aws_iam_openid_connect_provider.github.arn
+      },
+      Action = "sts:AssumeRoleWithWebIdentity",
+      Condition = {
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:UdayParkar/dev02:*"
+        }
+      }
+    }]
+  })
+}
+
+##########################################
+# Permissions for GitHub CI/CD role
+##########################################
+resource "aws_iam_role_policy_attachment" "github_ecr_access" {
+  role       = aws_iam_role.github_actions_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryFullAccess"
 }
