@@ -61,3 +61,19 @@
         ./aws/install --update
       args:
         creates: /usr/local/bin/aws
+
+    - name: Copy docker-compose.yml to EC2
+      copy:
+        src: ./docker-compose.yml
+        dest: /home/ubuntu/docker-compose.yml
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Create directory for MongoDB data
+      file:
+        path: /home/ubuntu/mongo_data
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'

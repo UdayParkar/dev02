@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  frontend:
+    image: 032425924654.dkr.ecr.ap-south-1.amazonaws.com/aurabeauty-frontend:latest
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  backend:
+    image: 032425924654.dkr.ecr.ap-south-1.amazonaws.com/aurabeauty-backend:latest
+    container_name: backend
+    ports:
+      - "5000:5000"
+    environment:
+      MONGO_URL: "mongodb://mongo:27017/aura"
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:4.4
+    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
