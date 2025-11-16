@@ -20,11 +20,11 @@
         mode: '0755'
       loop:
         - ""
-        - grafana
-        - grafana/provisioning
-        - grafana/provisioning/datasources
-        - grafana/provisioning/dashboards
-        - grafana/dashboards
+        - graphana
+        - graphana/provisioning
+        - graphana/provisioning/datasources
+        - graphana/provisioning/dashboards
+        - graphana/dashboards
 
     # --------------------------------------------
     # 2. Download and Install Node Exporter
@@ -45,6 +45,7 @@
       copy:
         src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
         dest: "/usr/local/bin/node_exporter"
+        remote_src: yes
         mode: '0755'
         owner: root
         group: root
@@ -54,7 +55,7 @@
     # --------------------------------------------
     - name: Copy node_exporter systemd service
       copy:
-        src: "../monitor/node_exporter.service"
+        src: "../monitoring/node_exporter.service"
         dest: /etc/systemd/system/node_exporter.service
         owner: root
         group: root
@@ -71,11 +72,11 @@
         state: started
 
     # --------------------------------------------
-    # 4. Copy Prometheus, Grafana, docker-compose files
+    # 4. Copy Prometheus, docker-compose, Grafana files
     # --------------------------------------------
     - name: Copy Prometheus config
       copy:
-        src: "../monitor/prometheus.yml"
+        src: "../monitoring/prometheus.yml"
         dest: "{{ monitor_dir }}/prometheus.yml"
         owner: ubuntu
         group: ubuntu
@@ -83,20 +84,17 @@
 
     - name: Copy docker-compose-monitor.yml
       copy:
-        src: "../monitor/docker-compose-monitor.yml"
+        src: "../monitoring/docker-compose-monitor.yml"
         dest: "{{ monitor_dir }}/docker-compose-monitor.yml"
         owner: ubuntu
         group: ubuntu
         mode: '0644'
 
-    - name: Copy Grafana provisioning files
-      copy:
-        src: "../monitor/grafana/"
-        dest: "{{ monitor_dir }}/grafana/"
-        owner: ubuntu
-        group: ubuntu
-        mode: '0755'
-        recurse: yes
+    - name: Copy Grafana provisioning directory (recursive)
+      ansible.posix.synchronize:
+        src: "../monitoring/graphana/"
+        dest: "{{ monitor_dir }}/graphana/"
+        recursive: yes
 
     # -------------------------------
     # 5. Start Monitoring Containers
