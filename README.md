@@ -27,10 +27,8 @@ dev02/
 │
 ├── app/
 │   ├── backend/
-│   │   └── server.js              # Express API + /metrics endpoint (prom-client)
-│   │
+│   │   
 │   └── frontend/
-│       └── src/...                # React UI
 │
 ├── docker/
 │   ├── frontend.Dockerfile
