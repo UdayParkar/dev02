@@ -3,10 +3,31 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Order from './models/Order.js';
+import client from 'prom-client';
 
 dotenv.config();
 
 const app = express();
+
+// -------------------- PROMETHEUS METRICS --------------------
+// Enable collection of default metrics (CPU, memory, event loop lag, etc.)
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics();
+
+// Custom registry
+const register = client.register;
+
+// /metrics endpoint
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (err) {
+    res.status(500).end(err.message);
+  }
+});
+// -------------------------------------------------------------
+
 
 // CORS configuration
 app.use(cors());
