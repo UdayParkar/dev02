@@ -1,8 +1,10 @@
 version: '3.9'
 
-services: 
+services:
+  # --------------------------------------------------------
   # PROMETHEUS
-    prometheus:
+  # --------------------------------------------------------
+  prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -16,7 +18,9 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
+  # --------------------------------------------------------
   # GRAFANA
+  # --------------------------------------------------------
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -32,7 +36,9 @@ services:
       - prometheus
     restart: unless-stopped
 
+  # --------------------------------------------------------
   # cADVISOR (CONTAINER METRICS)
+  # --------------------------------------------------------
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
     container_name: cadvisor
