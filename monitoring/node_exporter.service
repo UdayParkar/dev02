@@ -1,0 +1,16 @@
+[Unit]
+Description=Node Exporter
+Documentation=https://github.com/prometheus/node_exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

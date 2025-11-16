@@ -2,10 +2,31 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
+  # -------------------------------------
+  # Scrape Prometheus itself
+  # -------------------------------------
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+
+  # -------------------------------------
+  # Scrape Node Exporter (EC2 Host Metrics)
+  # -------------------------------------
+  - job_name: 'node_exporter'
+    static_configs:
+      - targets: ['host.docker.internal:9100']
+
+  # -------------------------------------
+  # Scrape cAdvisor (Container Metrics)
+  # -------------------------------------
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # -------------------------------------
+  # Scrape Backend Application Metrics
+  # -------------------------------------
   - job_name: 'backend'
+    metrics_path: '/metrics'
     static_configs:
       - targets: ['backend:5000']
-
-  - job_name: 'frontend'
-    static_configs:
-      - targets: ['frontend:80']
