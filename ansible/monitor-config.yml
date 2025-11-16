@@ -1,0 +1,109 @@
+---
+- name: Setup Monitoring Stack (Node Exporter + Prometheus + Grafana + cAdvisor)
+  hosts: all
+  become: true
+
+  vars:
+    monitor_dir: /home/ubuntu/monitor
+    node_exporter_version: "1.8.1"
+
+  tasks:
+    # -------------------------------
+    # 1. Create monitoring directory
+    # -------------------------------
+    - name: Create monitoring directory structure
+      file:
+        path: "{{ monitor_dir }}/{{ item }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      loop:
+        - ""
+        - grafana
+        - grafana/provisioning
+        - grafana/provisioning/datasources
+        - grafana/provisioning/dashboards
+        - grafana/dashboards
+
+    # --------------------------------------------
+    # 2. Download and Install Node Exporter
+    # --------------------------------------------
+    - name: Download Node Exporter archive
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+        dest: "/tmp/node_exporter.tar.gz"
+        mode: '0644'
+
+    - name: Extract Node Exporter archive
+      unarchive:
+        src: "/tmp/node_exporter.tar.gz"
+        dest: "/tmp/"
+        remote_src: yes
+
+    - name: Move Node Exporter binary to /usr/local/bin
+      copy:
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+        dest: "/usr/local/bin/node_exporter"
+        mode: '0755'
+        owner: root
+        group: root
+
+    # --------------------------------------------
+    # 3. Deploy systemd service for node_exporter
+    # --------------------------------------------
+    - name: Copy node_exporter systemd service
+      copy:
+        src: "../monitor/node_exporter.service"
+        dest: /etc/systemd/system/node_exporter.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start node_exporter service
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+
+    # --------------------------------------------
+    # 4. Copy Prometheus, Grafana, docker-compose files
+    # --------------------------------------------
+    - name: Copy Prometheus config
+      copy:
+        src: "../monitor/prometheus.yml"
+        dest: "{{ monitor_dir }}/prometheus.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Copy docker-compose-monitor.yml
+      copy:
+        src: "../monitor/docker-compose-monitor.yml"
+        dest: "{{ monitor_dir }}/docker-compose-monitor.yml"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Copy Grafana provisioning files
+      copy:
+        src: "../monitor/grafana/"
+        dest: "{{ monitor_dir }}/grafana/"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+        recurse: yes
+
+    # -------------------------------
+    # 5. Start Monitoring Containers
+    # -------------------------------
+    - name: Run monitoring stack via Docker Compose
+      shell: |
+        cd {{ monitor_dir }}
+        docker compose -f docker-compose-monitor.yml up -d
+      args:
+        executable: /bin/bash
