@@ -1,103 +1,250 @@
-# 🌐 Full Stack DevOps Challenge
+AuraBeauty – End-to-End Deployment (Terraform • CI/CD • Monitoring)
 
-## 📘 Project Overview
+This project demonstrates a complete production-style DevOps pipeline for deploying a 3-tier application (frontend + backend + MongoDB) using:
 
-This repository contains a full-stack web application built with **React (Frontend)** and **Node.js (Backend)**, containerized using **Docker**, and designed for **DevOps implementation and cloud deployment**.
-The project architecture simulates a real-world enterprise environment — including CI/CD, security scans, infrastructure automation, and monitoring.
+Terraform – Infrastructure as Code (AWS VPC, EC2, Security Groups, IAM)
 
-However, the project contains a few **intentional misconfigurations and hidden challenges** that interns must identify and fix to ensure smooth execution and deployment.
+GitHub Actions – CI/CD for building & pushing Docker images to ECR
 
----
+Ansible – Remote EC2 provisioning (Docker, AWS CLI, Monitoring stack, Node Exporter)
 
-## 🎯 Objective
+Docker Compose – App deployment + Monitoring services
 
-Your goal is to:
+Prometheus + Grafana + cAdvisor + Node Exporter – Full observability stack
 
-* Debug and fix existing configuration issues.
-* Containerize and orchestrate the full stack.
-* Deploy the complete system on **AWS (Free Tier only)** using best DevOps practices.
-* Ensure end-to-end connectivity and performance of all services.
+The deployment is fully automated from infrastructure → application → monitoring.
 
----
-
-## 🧩 Error Challenge Scope
-
-This project intentionally includes **multiple setup and configuration issues** across:
-
-* Backend
-* Frontend
-* Docker
-* Terraform
-* Security and CI/CD scripts
-
-Your task is to:
-
-1. **Identify** the issues.
-2. **Fix and document** the solutions.
-3. **Deploy** the entire stack successfully on AWS Free Tier.
-
-> 💬 Note: The same project was developed on **Azure**, but your challenge is to **recreate and deploy it on AWS** using similar architecture and services available in the free tier.
-
----
-
-## 🏗️ Project Structure
-
-```
-root/
+📁 Project Structure
+dev02/
+├── ansible/
+│   ├── config.yml                 # Installs Docker, AWS CLI, sets up app
+│   ├── monitor-config.yml         # Installs Node Exporter + runs Prometheus, Grafana, cAdvisor
+│   └── inventory.ini
 │
 ├── app/
-│   ├── backend/        # Node.js API service
-│   └── frontend/       # React web interface
+│   ├── backend/
+│   │   ├── package.json
+│   │   ├── package-lock.json
+│   │   └── server.js              # Express API + /metrics endpoint (prom-client)
+│   │
+│   └── frontend/
+│       ├── package.json
+│       ├── package-lock.json
+│       └── src/...                # React UI
 │
-├── docker/             # Dockerfiles and image setup
-├── terraform/          # Infrastructure as Code setup
-├── scripts/            # Automation and deployment scripts
-├── monitoring/         # Monitoring and logging configuration
-├── security/           # Security scanning and compliance scripts
+├── docker/
+│   ├── frontend.Dockerfile
+│   ├── backend.Dockerfile
+│   └── nginx.conf                 # Frontend served via Nginx reverse proxy
 │
-├── .gitignore
-├── .dockerignore
-└── README.md
-```
+├── monitoring/
+│   ├── prometheus.yml
+│   ├── docker-compose-monitor.yml
+│   ├── node_exporter.service
+│   └── graphana/
+│       ├── provisioning/
+│       │   ├── datasources/
+│       │   │   └── datasource-prometheus.yaml
+│       │   └── dashboards/
+│       │       └── dashboards.yaml
+│       └── dashboards/            # You manually import dashboards here
+│
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── terraform.tfvars
+│
+├── docker-compose.yml             # Used ONLY for local dev testing
+└── README.md                      # You are reading it
 
----
+🚀 Part 1 — Infrastructure (Terraform on AWS)
 
-## 🧠 Learning Outcomes
+Terraform provisions:
 
-By completing this challenge, interns will gain:
+✔ VPC + Public Subnet
+✔ Internet Gateway + Route Table
+✔ Security Group
 
-* Real-world DevOps troubleshooting experience.
-* Hands-on skills in containerization and orchestration.
-* Exposure to CI/CD automation and cloud infrastructure.
-* Understanding of AWS Free Tier services and best practices.
-* Problem-solving and debugging proficiency in distributed systems.
+Allows:
 
----
+22 (SSH)
 
-## 🧾 Deliverables
+80 (Frontend)
 
-Each intern must submit:
+5000 (Backend)
 
-1. A **working deployment** of the project on AWS Free Tier.
-2. A **report/documentation** explaining the steps taken to fix errors and deploy.
-3. A **demo video** or screenshots showing successful end-to-end execution.
+8080 (cAdvisor)
 
----
+9090 (Prometheus)
 
-## 🧮 Evaluation Criteria
+3000 (Grafana)
 
-| Criteria                 | Description                                       |
-| ------------------------ | ------------------------------------------------- |
-| 🔧 Problem Solving       | Ability to debug and resolve configuration issues |
-| ☁️ Cloud Implementation  | Proper setup and deployment on AWS Free Tier      |
-| 🔒 Security & Compliance | Application of secure DevOps practices            |
-| 🐳 Containerization      | Efficient use of Docker and image management      |
-| ⚙️ CI/CD Automation      | Smooth build and deployment pipelines             |
-| 📘 Documentation         | Clear explanation of findings and approach        |
+9100 (Node Exporter)
 
----
+✔ EC2 Instance (Ubuntu 24.04)
+✔ IAM Role for EC2 to pull from ECR
+✔ ECR Repositories (frontend + backend)
+✔ OIDC for GitHub Actions CI/CD
+▶️ Running Terraform
+cd terraform
+terraform init
+terraform apply -auto-approve
 
-## 🚀 Final Note
+Output will include:
 
-This challenge is designed to test your **real-world DevOps thinking** — not just execution.
-You’re expected to **analyze**, **plan**, and **implement** a reliable AWS-based deployment by overcoming hidden issues within the project.
+EC2 Public IP
+
+ECR repo URLs
+
+GitHub OIDC role
+
+VPC/Subnet details
+
+Screenshot Placeholder:
+
+![Terraform Apply Output](./assets/terraform-apply.png)
+
+🔄 Part 2 — CI/CD (GitHub Actions → ECR → EC2)
+
+Whenever you push to main, GitHub Actions will:
+
+Build frontend Docker image
+
+Build backend Docker image
+
+Login to AWS ECR using OIDC
+
+Push both images to ECR
+
+SSH into EC2 and restart the app using docker compose pull && docker compose up -d
+
+Screenshot Placeholder:
+
+![CI/CD Successful Pipeline](./assets/github-actions-success.png)
+
+⚙️ Part 3 — EC2 Configuration (Ansible)
+
+Ansible playbook config.yml performs:
+
+✔ Install Docker + Docker Compose Plugin
+✔ Install AWS CLI v2
+✔ Copy app-level docker-compose.yml
+✔ Prepare MongoDB data directory
+✔ Allow ubuntu user to run docker
+✔ Start application stack
+
+Run:
+
+cd ansible
+ansible-playbook -i inventory.ini config.yml
+
+
+Screenshot Placeholder:
+
+![Ansible App Provision Output](./assets/ansible-config.png)
+
+📊 Part 4 — Monitoring Stack (Prometheus + Grafana + Node Exporter + cAdvisor)
+
+Monitoring stack is deployed via:
+
+ansible-playbook -i inventory.ini monitor-config.yml
+
+
+This installs:
+
+✔ Node Exporter
+
+System metrics from EC2 (CPU, RAM, Disk, Network)
+
+✔ cAdvisor
+
+Container-level metrics (Docker containers)
+
+✔ Prometheus
+
+Scrapes:
+
+Prometheus itself
+
+Node Exporter
+
+cAdvisor
+
+Backend /metrics from prom-client
+
+✔ Grafana
+
+Datasource autoprovisioned
+Dashboards imported manually:
+
+Node Exporter Full (ID: 1860)
+
+cAdvisor Dashboard
+
+Backend Express.js metrics (manual custom dashboard)
+
+Screenshot Placeholders:
+
+![Prometheus UI](./assets/prometheus-ui.png)
+![Grafana Dashboards](./assets/grafana-dashboards.png)
+![Node Exporter Metrics](./assets/nodeexporter.png)
+![cAdvisor Dashboard](./assets/cadvisor.png)
+
+🌐 Part 5 — Application Deployment (Docker Compose on EC2)
+
+App is deployed using:
+
+docker compose up -d
+
+
+Services exposed publicly:
+
+Frontend → http://<ec2-ip>:80
+
+Backend → http://<ec2-ip>:5000
+
+Prometheus → http://<ec2-ip>:9090
+
+Grafana → http://<ec2-ip>:3000
+
+cAdvisor → http://<ec2-ip>:8080
+
+Node Exporter → http://<ec2-ip>:9100/metrics
+
+Screenshot Placeholder:
+
+![Frontend Live](./assets/frontend.png)
+
+⚡ Local Development
+
+There is a separate Docker Compose file for local testing:
+
+docker-compose.yml
+
+
+Runs:
+
+Mongo
+
+Backend (Node.js)
+
+Frontend (React)
+All locally.
+
+This file is NOT used in production.
+
+🎯 Summary of Workflow
+Stage	Tool	Purpose
+Infrastructure	Terraform	Provision AWS EC2 + VPC + SG + IAM + ECR
+Application Setup	Docker Compose	Run 3-tier app
+CI/CD	GitHub Actions	Auto-build & push images to ECR
+Config Management	Ansible	Install Docker, AWS CLI, monitoring stack
+Monitoring	Prometheus + Grafana	Full observability
+Metrics Export	Node Exporter, cAdvisor, prom-client	Host, container & app metrics
+🏁 Final Notes
+
+✔ Fully automated end-to-end DevOps pipeline
+✔ App + Infra + Monitoring all deployed from scratch
+✔ CI/CD handles updates automatically
+✔ Monitoring stack provides real-time system + container + app metrics
