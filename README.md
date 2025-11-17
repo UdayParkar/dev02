@@ -109,10 +109,10 @@ Ansible playbook `config.yml` performs:
 
 - ✔ Install Docker + Docker Compose Plugin
 - ✔ Install AWS CLI v2
-- ✔ Copy app-level docker-compose.yml
+- ✔ Copy ansible/docker-compose.yml to EC2
 - ✔ Prepare MongoDB data directory
 - ✔ Allow ubuntu user to run docker
-- ✔ Start application stack
+- ✔ Does NOT start the application (handled by CI/CD)
 
 ### Run:
 
@@ -120,6 +120,8 @@ Ansible playbook `config.yml` performs:
 cd ansible
 ansible-playbook -i inventory.ini config.yml
 ```
+
+Note: Ansible only prepares the EC2 instance and places the docker-compose.yml file. The actual application deployment (pulling images and starting containers) is handled entirely by the CI/CD pipeline.
 
 **Screenshot Placeholder:**
 
@@ -133,9 +135,11 @@ Whenever you push to `main`, GitHub Actions will:
 
 1. 🔨 Build frontend Docker image
 2. 🔨 Build backend Docker image
-3. 🔐 Login to AWS ECR using OIDC
-4. 📤 Push both images to ECR
-5. 🚀 SSH into EC2 and restart the app using `docker compose pull && docker compose up -d`
+3. 🔐 scan frontend image with trivy
+4. 🔐 scan backend image with trivy
+5. 🔐 Login to AWS ECR using OIDC
+6. 📤 Push both images to ECR
+7. 🚀 SSH into EC2 and deploy the app.
 
 **Screenshot Placeholder:**
 
@@ -156,8 +160,20 @@ ansible-playbook -i inventory.ini monitor-config.yml
 #### ✔ **Node Exporter**
 System metrics from EC2 (CPU, RAM, Disk, Network)
 
+**Screenshot:**
+
+![Node Exporter Metrics](./assets/nodeexporter.png)
+
+---
+
 #### ✔ **cAdvisor**
 Container-level metrics (Docker containers)
+
+**Screenshot:**
+
+![cAdvisor UI](./assets/cadvisor.png)
+
+---
 
 #### ✔ **Prometheus**
 Scrapes:
@@ -166,19 +182,26 @@ Scrapes:
 - cAdvisor
 - Backend /metrics from prom-client
 
+**Screenshot:**
+
+![Prometheus UI](./assets/prometheus-ui.png)
+
+---
+
 #### ✔ **Grafana**
 - Datasource autoprovisioned
 - Dashboards imported manually:
   - Node Exporter Full (ID: 1860)
-  - cAdvisor Dashboard
-  - Backend Express.js metrics (manual custom dashboard)
+  - cAdvisor Dashboard (ID: 18573)
+  - Backend/app level dashboard (ID: 11159)
 
-**Screenshot Placeholders:**
+**Grafana Dashboards:**
 
-![Prometheus UI](./assets/prometheus-ui.png)
-![Grafana Dashboards](./assets/grafana-dashboards.png)
-![Node Exporter Metrics](./assets/nodeexporter.png)
-![cAdvisor Dashboard](./assets/cadvisor.png)
+![Node Exporter Full Dashboard](./assets/grafana-node-exporter.png)
+
+![cAdvisor Dashboard](./assets/grafana-cadvisor.png)
+
+![Backend App Metrics Dashboard](./assets/grafana-backend.png)
 
 ---
 
