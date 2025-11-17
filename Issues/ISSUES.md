@@ -75,9 +75,9 @@ ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 ### Issue 8 — Missing monitoring ports in Security Group
 
-**Cause:** SG initially lacked 8080 (cAdvisor) and 9100 (Node Exporter).
+**Cause:** SG initially lacked 9100 (Node Exporter).
 
-**Fix:** Added those ingress rules.
+**Fix:** Added the ingress rule.
 
 ---
 
@@ -176,7 +176,7 @@ AmazonEC2ReadOnlyAccess
 
 ---
 
-## 📡 5. Monitoring (Prometheus, Grafana, Node Exporter, cAdvisor)
+## 📡 5. Monitoring (Prometheus, Grafana, Node Exporter)
 
 ### Issue 18 — Prometheus backend scrape error
 
@@ -217,7 +217,7 @@ docker compose down && docker compose up -d
 
 ---
 
-### Issue 20 — Grafana cAdvisor dashboard showed "No Data"
+### Issue 20 — Grafana dashboard showed "No Data"
 
 **Cause:** Wrong / outdated dashboard JSON.
 

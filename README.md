@@ -22,7 +22,7 @@ This project demonstrates a **complete production-style DevOps pipeline** for de
 dev02/
 ├── ansible/
 │   ├── config.yml                 # Installs Docker, AWS CLI, sets up app
-│   ├── monitor-config.yml         # Installs Node Exporter + runs Prometheus, Grafana, cAdvisor
+│   ├── monitor-config.yml         # Installs Node Exporter + runs Prometheus, Grafana
 │   └── inventory.ini
 │
 ├── app/
@@ -78,7 +78,6 @@ dev02/
 - `22` (SSH)
 - `80` (Frontend)
 - `5000` (Backend)
-- `8080` (cAdvisor)
 - `9090` (Prometheus)
 - `3000` (Grafana)
 - `9100` (Node Exporter)
@@ -147,7 +146,7 @@ Whenever you push to `main`, GitHub Actions will:
 
 ---
 
-## 📊 Part 4 — Monitoring Stack (Prometheus + Grafana + Node Exporter + cAdvisor)
+## 📊 Part 4 — Monitoring Stack (Prometheus + Grafana + Node Exporter)
 
 Monitoring stack is deployed via:
 
@@ -172,20 +171,10 @@ System metrics from EC2 (CPU, RAM, Disk, Network)
 
 ---
 
-#### ✔ **cAdvisor**
-Container-level metrics (Docker containers)
-
-**Screenshot:**
-
-![cAdvisor UI](./assets/cadvisor.png)
-
----
-
 #### ✔ **Prometheus**
 Scrapes:
 - Prometheus itself
 - Node Exporter
-- cAdvisor
 - Backend /metrics from prom-client
 
 **Screenshot:**
@@ -222,7 +211,6 @@ Scrapes:
 | **Backend** | `http://<ec2-ip>:5000` |
 | **Prometheus** | `http://<ec2-ip>:9090` |
 | **Grafana** | `http://<ec2-ip>:3000` |
-| **cAdvisor** | `http://<ec2-ip>:8080` |
 | **Node Exporter** | `http://<ec2-ip>:9100/metrics` |
 
 ---
@@ -255,7 +243,7 @@ All locally.
 | **CI/CD** | GitHub Actions | Auto-build & push images to ECR |
 | **Config Management** | Ansible | Install Docker, AWS CLI, monitoring stack |
 | **Monitoring** | Prometheus + Grafana | Full observability |
-| **Metrics Export** | Node Exporter, cAdvisor, prom-client | Host, container & app metrics |
+| **Metrics Export** | Node Exporter, prom-client | Host and App metrics |
 
 ---
 
@@ -264,7 +252,7 @@ All locally.
 ✔ Fully automated end-to-end DevOps pipeline  
 ✔ App + Infra + Monitoring all deployed from scratch  
 ✔ CI/CD handles updates automatically  
-✔ Monitoring stack provides real-time system + container + app metrics
+✔ Monitoring stack provides real-time system + app metrics
 
 ---
 
