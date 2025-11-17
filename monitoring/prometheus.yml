@@ -17,13 +17,6 @@ scrape_configs:
       - targets: ['host.docker.internal:9100']
 
   # -------------------------------------
-  # Scrape cAdvisor (Container Metrics)
-  # -------------------------------------
-  - job_name: 'cadvisor'
-    static_configs:
-      - targets: ['host.docker.internal:8080']
-
-  # -------------------------------------
   # Scrape Backend Application Metrics
   # -------------------------------------
   - job_name: 'backend'

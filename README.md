@@ -155,6 +155,12 @@ Monitoring stack is deployed via:
 ansible-playbook -i inventory.ini monitor-config.yml
 ```
 
+**Screenshot Placeholder:**
+
+![monitor-config](./assets/monitor-config.png)
+
+---
+
 ### This installs:
 
 #### ✔ **Node Exporter**
@@ -192,26 +198,21 @@ Scrapes:
 - Datasource autoprovisioned
 - Dashboards imported manually:
   - Node Exporter Full (ID: 1860)
-  - cAdvisor Dashboard (ID: 18573)
   - Backend/app level dashboard (ID: 11159)
 
 **Grafana Dashboards:**
 
 ![Node Exporter Full Dashboard](./assets/grafana-node-exporter.png)
 
-![cAdvisor Dashboard](./assets/grafana-cadvisor.png)
-
 ![Backend App Metrics Dashboard](./assets/grafana-backend.png)
 
 ---
 
-## 🌐 Part 5 — Application Deployment (Docker Compose on EC2)
+## 🌐 Part 5 — Application UI
 
-App is deployed using:
+**Screenshot Placeholder:**
 
-```bash
-docker compose up -d
-```
+![Frontend Live](./assets/frontend.png)
 
 ### Services exposed publicly:
 
@@ -223,10 +224,6 @@ docker compose up -d
 | **Grafana** | `http://<ec2-ip>:3000` |
 | **cAdvisor** | `http://<ec2-ip>:8080` |
 | **Node Exporter** | `http://<ec2-ip>:9100/metrics` |
-
-**Screenshot Placeholder:**
-
-![Frontend Live](./assets/frontend.png)
 
 ---
 
