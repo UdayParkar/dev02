@@ -10,7 +10,7 @@ This project demonstrates a **complete production-style DevOps pipeline** for de
 - **GitHub Actions** – CI/CD for building & pushing Docker images to ECR
 - **Ansible** – Remote EC2 provisioning (Docker, AWS CLI, Monitoring stack, Node Exporter)
 - **Docker Compose** – App deployment + Monitoring services
-- **Prometheus + Grafana + cAdvisor + Node Exporter** – Full observability stack
+- **Prometheus + Grafana + Node Exporter** – Full observability stack
 
 > **The deployment is fully automated from infrastructure → application → monitoring.**
 
